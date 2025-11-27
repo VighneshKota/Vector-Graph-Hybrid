@@ -1,0 +1,39 @@
+services:
+  neo4j:
+    image: neo4j:5.12
+    container_name: person_d_neo4j
+    ports:
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    volumes:
+      - neo4j_data:/data
+
+  graph_service:
+    build: .
+    container_name: person_d_service
+    ports:
+      - "8001:8000"
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=password
+    env_file:
+      - .env
+    depends_on:
+      - neo4j
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: person_d_ngrok
+    command: http graph_service:8000
+    ports:
+      - "4040:4040" # Ngrok web interface
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    depends_on:
+      - graph_service
+
+volumes:
+  neo4j_data:
