@@ -16,6 +16,34 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Person D - Graph Service", lifespan=lifespan)
 
+from fastapi import Request
+import datetime
+
+@app.middleware("http")
+async def log_ports(request: Request, call_next):
+    # Extract client and server info
+    client_host = request.client.host if request.client else "unknown"
+    client_port = request.client.port if request.client else "unknown"
+    
+    # Get server port from scope
+    server_port = request.scope.get("server", ("unknown", "unknown"))[1]
+    
+    response = await call_next(request)
+    
+    # Log to file
+    timestamp = datetime.datetime.now().isoformat()
+    log_entry = (
+        f"[{timestamp}] {request.method} {request.url.path} | "
+        f"Client: {client_host}:{client_port} | "
+        f"Server Port: {server_port} | "
+        f"Status: {response.status_code}\n"
+    )
+    
+    with open("port_logs.txt", "a") as f:
+        f.write(log_entry)
+        
+    return response
+
 def get_repo():
     if not repo:
         raise HTTPException(status_code=503, detail="Database not initialized")

@@ -21,6 +21,8 @@ services:
       - NEO4J_PASSWORD=password
     env_file:
       - .env
+    volumes:
+      - .:/app
     depends_on:
       - neo4j
 
