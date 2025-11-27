@@ -24,5 +24,16 @@ services:
     depends_on:
       - neo4j
 
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: person_d_ngrok
+    command: http graph_service:8000
+    ports:
+      - "4040:4040" # Ngrok web interface
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    depends_on:
+      - graph_service
+
 volumes:
   neo4j_data:

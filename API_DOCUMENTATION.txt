@@ -1,0 +1,310 @@
+# Person D - Graph Service API Documentation
+
+## Base URL
+- **Local**: `http://localhost:8000`
+- **Public (Ngrok)**: `https://likelier-clementine-anachronously.ngrok-free.dev`
+
+> **Note**: Use the public URL for external access and integration with other services.
+
+---
+
+## Endpoints
+
+### 1. Create Node
+**Endpoint**: `POST /nodes`
+
+**Description**: Create a new node in the graph database.
+
+**Request Body**:
+```json
+{
+  "id": "string (required)",
+  "label": "string (required)",
+  "properties": {
+    "key1": "value1",
+    "key2": "value2"
+  }
+}
+```
+
+**Example Request**:
+```json
+{
+  "id": "chunk_001",
+  "label": "Chunk",
+  "properties": {
+    "text": "SpaceX rockets land vertically.",
+    "source": "research.pdf",
+    "page": 1
+  }
+}
+```
+
+**Expected Response**:
+```json
+{
+  "status": "created",
+  "id": "chunk_001"
+}
+```
+
+---
+
+### 2. Get Node
+**Endpoint**: `GET /nodes/{node_id}`
+
+**Description**: Retrieve a specific node by its ID.
+
+**Path Parameters**:
+- `node_id` (string, required): The ID of the node to retrieve
+
+**Example Request**:
+```
+GET /nodes/chunk_001
+```
+
+**Expected Response**:
+```json
+{
+  "id": "chunk_001",
+  "label": "Chunk",
+  "properties": {
+    "text": "SpaceX rockets land vertically.",
+    "source": "research.pdf",
+    "page": 1
+  }
+}
+```
+
+---
+
+### 3. Delete Node
+**Endpoint**: `DELETE /nodes/{node_id}`
+
+**Description**: Delete a node and all its relationships.
+
+**Path Parameters**:
+- `node_id` (string, required): The ID of the node to delete
+
+**Example Request**:
+```
+DELETE /nodes/chunk_001
+```
+
+**Expected Response**:
+```json
+{
+  "status": "deleted",
+  "id": "chunk_001"
+}
+```
+
+---
+
+### 4. Create Edge (Relationship)
+**Endpoint**: `POST /edges`
+
+**Description**: Create a relationship between two nodes.
+
+**Request Body**:
+```json
+{
+  "source_id": "string (required)",
+  "target_id": "string (required)",
+  "type": "string (required)",
+  "weight": 1.0 (optional, default: 1.0)
+}
+```
+
+**Example Request**:
+```json
+{
+  "source_id": "file_research_pdf",
+  "target_id": "chunk_001",
+  "type": "HAS_CHUNK",
+  "weight": 1.0
+}
+```
+
+**Expected Response**:
+```json
+{
+  "status": "created",
+  "source": "file_research_pdf",
+  "target": "chunk_001"
+}
+```
+
+---
+
+### 5. Search Graph (Get Neighborhood)
+**Endpoint**: `GET /search/graph`
+
+**Description**: Find all nodes and relationships connected to a starting node.
+
+**Query Parameters**:
+- `start_id` (string, required): The ID of the starting node
+- `depth` (integer, optional, default: 1): How many hops away to search
+
+**Example Request**:
+```
+GET /search/graph?start_id=chunk_001&depth=1
+```
+
+**Expected Response**:
+```json
+{
+  "nodes": [
+    {
+      "id": "chunk_001",
+      "label": "Chunk",
+      "properties": {
+        "text": "SpaceX rockets land vertically.",
+        "source": "research.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "file_research_pdf",
+      "label": "File",
+      "properties": {
+        "filename": "research.pdf",
+        "author": "Elon"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "source": "file_research_pdf",
+      "target": "chunk_001",
+      "type": "HAS_CHUNK"
+    }
+  ]
+}
+```
+
+---
+
+## Common Use Cases
+
+### Use Case 1: Store a Document with Chunks
+1. Create a File node: `POST /nodes` with `label: "File"`
+2. Create Chunk nodes: `POST /nodes` with `label: "Chunk"` (repeat for each chunk)
+3. Connect them: `POST /edges` with `type: "HAS_CHUNK"`
+
+### Use Case 2: Find Related Content
+1. Search from a chunk: `GET /search/graph?start_id=chunk_001`
+2. The response will show all connected nodes (parent file, related chunks, etc.)
+
+### Use Case 3: Update Node Content
+1. Create/update node: `POST /nodes` with the same `id` (it will upsert)
+2. The properties will be updated
+
+---
+
+## Error Responses
+
+**404 Not Found**:
+```json
+{
+  "detail": "Node not found"
+}
+```
+
+**500 Internal Server Error**:
+```json
+{
+  "detail": "Error message here"
+}
+```
+
+---
+
+## Interactive Documentation
+- **Local**: `http://localhost:8000/docs`
+- **Public**: `https://likelier-clementine-anachronously.ngrok-free.dev/docs`
+
+---
+
+## Integration Examples
+
+### Using cURL
+```bash
+# Create a node
+curl -X POST "https://likelier-clementine-anachronously.ngrok-free.dev/nodes" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "chunk_001",
+    "label": "Chunk",
+    "properties": {
+      "text": "SpaceX rockets land vertically."
+    }
+  }'
+
+# Get a node
+curl "https://likelier-clementine-anachronously.ngrok-free.dev/nodes/chunk_001"
+
+# Search graph
+curl "https://likelier-clementine-anachronously.ngrok-free.dev/search/graph?start_id=chunk_001&depth=1"
+```
+
+### Using Python (requests)
+```python
+import requests
+
+BASE_URL = "https://likelier-clementine-anachronously.ngrok-free.dev"
+
+# Create a node
+response = requests.post(
+    f"{BASE_URL}/nodes",
+    json={
+        "id": "chunk_001",
+        "label": "Chunk",
+        "properties": {
+            "text": "SpaceX rockets land vertically."
+        }
+    }
+)
+print(response.json())
+
+# Get a node
+response = requests.get(f"{BASE_URL}/nodes/chunk_001")
+print(response.json())
+
+# Search graph
+response = requests.get(
+    f"{BASE_URL}/search/graph",
+    params={"start_id": "chunk_001", "depth": 1}
+)
+print(response.json())
+```
+
+### Using JavaScript (fetch)
+```javascript
+const BASE_URL = "https://likelier-clementine-anachronously.ngrok-free.dev";
+
+// Create a node
+fetch(`${BASE_URL}/nodes`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    id: "chunk_001",
+    label: "Chunk",
+    properties: {
+      text: "SpaceX rockets land vertically."
+    }
+  })
+})
+.then(res => res.json())
+.then(data => console.log(data));
+
+// Get a node
+fetch(`${BASE_URL}/nodes/chunk_001`)
+  .then(res => res.json())
+  .then(data => console.log(data));
+
+// Search graph
+fetch(`${BASE_URL}/search/graph?start_id=chunk_001&depth=1`)
+  .then(res => res.json())
+  .then(data => console.log(data));
+```
