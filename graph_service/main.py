@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends, Query
 from typing import List, Dict, Any
 from contextlib import asynccontextmanager
 from repository import GraphRepository
-from schemas import NodeCreate, EdgeCreate, NodeResponse, EdgeResponse, GraphSearchResponse
+from schemas import NodeCreate, EdgeCreate, EdgeUpdate, NodeResponse, EdgeResponse, GraphSearchResponse
 
 # Global repository instance
 repo = None
@@ -70,10 +70,29 @@ def delete_node(node_id: str, repository: GraphRepository = Depends(get_repo)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/edges", response_model=Dict[str, str])
+@app.post("/edges", response_model=Dict[str, Any])
 def create_edge(edge: EdgeCreate, repository: GraphRepository = Depends(get_repo)):
     try:
         return repository.create_edge(edge)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/edges/{edge_id}", response_model=Dict[str, Any])
+def update_edge(edge_id: str, edge_update: EdgeUpdate, repository: GraphRepository = Depends(get_repo)):
+    try:
+        result = repository.update_edge(edge_id, edge_update)
+        if not result:
+            raise HTTPException(status_code=404, detail="Edge not found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/edges/{edge_id}", response_model=Dict[str, str])
+def delete_edge(edge_id: str, repository: GraphRepository = Depends(get_repo)):
+    try:
+        return repository.delete_edge(edge_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

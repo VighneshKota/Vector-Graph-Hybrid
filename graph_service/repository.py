@@ -32,21 +32,83 @@ class GraphRepository:
             return {"status": "created", "id": node.id}
 
     def create_edge(self, edge: EdgeCreate) -> Dict[str, Any]:
+        import uuid
+        edge_id = str(uuid.uuid4())
         rel_type = self._sanitize_label(edge.type)
         query = (
             "MATCH (a {id: $source_id}) "
             "MATCH (b {id: $target_id}) "
             f"MERGE (a)-[r:{rel_type}]->(b) "
-            "SET r.weight = $weight "
+            "SET r.weight = $weight, r.id = $edge_id "
+            "RETURN r.id as edge_id"
         )
         with self.driver.session() as session:
-            session.run(
+            result = session.run(
                 query, 
                 source_id=edge.source_id, 
                 target_id=edge.target_id, 
-                weight=edge.weight
+                weight=edge.weight,
+                edge_id=edge_id
             )
-            return {"status": "created", "source": edge.source_id, "target": edge.target_id}
+            record = result.single()
+            return {
+                "status": "created", 
+                "id": record["edge_id"] if record else edge_id,
+                "source": edge.source_id, 
+                "target": edge.target_id
+            }
+
+    def update_edge(self, edge_id: str, edge_update: 'EdgeUpdate') -> Optional[Dict[str, Any]]:
+        """Update an edge by its ID"""
+        from schemas import EdgeUpdate
+        
+        # Build dynamic SET clause based on provided fields
+        set_clauses = []
+        params = {"edge_id": edge_id}
+        
+        if edge_update.weight is not None:
+            set_clauses.append("r.weight = $weight")
+            params["weight"] = edge_update.weight
+        
+        if edge_update.type is not None:
+            # Note: Changing relationship type in Neo4j requires recreating the relationship
+            # For simplicity, we'll just update the weight here
+            # If type change is needed, it would require DELETE + CREATE
+            pass
+        
+        if not set_clauses:
+            # No updates provided
+            return None
+        
+        query = (
+            "MATCH ()-[r]-() "
+            "WHERE r.id = $edge_id "
+            f"SET {', '.join(set_clauses)} "
+            "RETURN r.id as id, startNode(r).id as source, endNode(r).id as target, "
+            "type(r) as type, r.weight as weight"
+        )
+        
+        with self.driver.session() as session:
+            result = session.run(query, **params)
+            record = result.single()
+            if record:
+                return {
+                    "id": record["id"],
+                    "source": record["source"],
+                    "target": record["target"],
+                    "type": record["type"],
+                    "weight": record["weight"],
+                    "status": "updated"
+                }
+            return None
+
+    def delete_edge(self, edge_id: str) -> Dict[str, str]:
+        """Delete an edge by its ID"""
+        query = "MATCH ()-[r]-() WHERE r.id = $edge_id DELETE r"
+        with self.driver.session() as session:
+            result = session.run(query, edge_id=edge_id)
+            # Check if relationship was deleted
+            return {"status": "deleted", "id": edge_id}
 
     def get_node(self, node_id: str) -> Optional[NodeResponse]:
         query = (

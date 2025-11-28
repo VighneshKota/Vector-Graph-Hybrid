@@ -12,15 +12,21 @@ class EdgeCreate(BaseModel):
     type: str
     weight: Optional[float] = 1.0
 
+class EdgeUpdate(BaseModel):
+    type: Optional[str] = None
+    weight: Optional[float] = None
+
 class NodeResponse(BaseModel):
     id: str
     label: str
     properties: Dict[str, Any]
 
 class EdgeResponse(BaseModel):
+    id: Optional[str] = None
     source: str
     target: str
     type: str
+    weight: Optional[float] = None
 
 class GraphSearchResponse(BaseModel):
     nodes: List[NodeResponse]
